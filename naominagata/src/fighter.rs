@@ -63,8 +63,7 @@ impl Ship {
         let control = self.pid.update(bearing, TICK_LENGTH);
         torque(control);
 
-        // Fire when the shell is expected to hit in under a second
-        // and our bearing error is small (less than 0.01 rad ~ 0.6°).
+        // Fire
         if bearing.abs() < 0.01 {
             fire(0);
         }
