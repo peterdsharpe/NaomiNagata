@@ -67,7 +67,7 @@ impl Ship {
         let shot_distance = BULLET_SPEED * t;
 
         debug!("t: {}", t);
-        draw_diamond(aim_point, 10.0, 0x00ff00);
+        draw_diamond(position() + aim_point, 10.0, 0x00ff00);
         draw_line(
             position(),
             position() + vec2(heading().cos(), heading().sin()) * BULLET_SPEED * t,
@@ -83,8 +83,10 @@ impl Ship {
         torque(control);
 
         // Fire
-        if bearing_error.abs() * shot_distance < 20.0 {
+        if bearing_error.abs() * shot_distance < 10.0 {
             fire(0);
         }
+
+        accelerate(1000.0 * r_rel);
     }
 }
