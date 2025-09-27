@@ -1,36 +1,54 @@
-use oort_api::prelude::*;
 use crate::BULLET_SPEED;
+use oort_api::prelude::*;
 
 const MAX_ITER: usize = 100;
 
-pub struct Target {
-    pub position: Vec2,
-    pub velocity: Vec2,
-    pub acceleration: Vec2,
+pub struct TrackedTarget {
+    pub r: Vec2,
+    pub r_cov: [[f64; 2]; 2],
+    pub v: Vec2,
+    pub v_cov: [[f64; 2]; 2],
+    pub a: Vec2,
+    pub a_cov: [[f64; 2]; 2],
     pub time_to_intercept: Option<f64>,
     pub intercept_point: Option<Vec2>,
+    /// Priority for engaging this target with weapons (computed each tick).
+    pub firing_priority: f64,
+    /// Priority for allocating radar time to this target (computed each tick).
+    pub radar_priority: f64,
 }
 
-impl Target {
+impl TrackedTarget {
     pub fn new(r: Vec2, v: Vec2, a: Vec2) -> Self {
-            Self {
-                position: r,
-                velocity: v,
-                acceleration: a,
-                time_to_intercept: None,
-                intercept_point: None,
-            }
+        Self {
+            r,
+            v,
+            a,
+            r_cov: [[0.0; 2]; 2],
+            v_cov: [[0.0; 2]; 2],
+            a_cov: [[0.0; 2]; 2],
+            time_to_intercept: None,
+            intercept_point: None,
+            firing_priority: 0.0,
+            radar_priority: 0.0,
+        }
     }
 
-    pub fn update_state(&mut self, r: Vec2, v: Vec2, a: Vec2) {
-        self.position = r;
-        self.velocity = v;
-        self.acceleration = a;
+    pub fn tick(&mut self) {
+        self.r += self.v * TICK_LENGTH;
+        self.v += self.a * TICK_LENGTH;
+        for i in 0..2 {
+            for j in 0..2 {
+                self.r_cov[i][j] += self.v_cov[i][j] * TICK_LENGTH;
+                self.v_cov[i][j] += self.a_cov[i][j] * TICK_LENGTH;
+            }
+        }
     }
+
 
     pub fn update_firing_solution(&mut self) {
-        let r_rel = self.position - position();
-        let v_rel = self.velocity - velocity();
+        let r_rel = self.r - position();
+        let v_rel = self.v - velocity();
 
         let t_guess = match self.time_to_intercept {
             Some(t) => t,
@@ -47,7 +65,14 @@ impl Target {
                 }
             }
         };
-        let t = firing_solution_const_accel(r_rel, v_rel, self.acceleration, BULLET_SPEED, t_guess, 1e-4);
+        let t = firing_solution_const_accel(
+            r_rel,
+            v_rel,
+            self.a,
+            BULLET_SPEED,
+            t_guess,
+            1e-4,
+        );
         if t <= 0.0 {
             // No valid intercept time
             self.time_to_intercept = None;
@@ -55,21 +80,58 @@ impl Target {
             return;
         }
         self.time_to_intercept = Some(t);
-        self.intercept_point = Some(self.position + self.velocity * t + 0.5 * self.acceleration * t * t);
+        self.intercept_point =
+            Some(self.r + self.v * t + 0.5 * self.a * t * t);
+    }
+
+    pub fn update_priorities(&mut self, shooter_pos: Vec2) {
+        // Firing priority: inverse of time‐to‐intercept if a solution exists.
+        self.firing_priority = self
+            .time_to_intercept
+            .map(|t| 1.0 / t.max(1e-6))
+            .unwrap_or(0.0);
+
+        // Mahalanobis-based closest possible approach within 2σ uncertainty.
+        let r_rel = self.r - shooter_pos;
+        let dist = r_rel.length();
+        // Extract covariance entries.
+        let a = self.r_cov[0][0];
+        let b = self.r_cov[0][1];
+        let d = self.r_cov[1][1];
+        // Unit vector in relative direction.
+        let r_unit = if dist > 0.0 {
+            r_rel / dist
+        } else {
+            vec2(1.0, 0.0)
+        };
+        let var_radial =
+            r_unit.x * (a * r_unit.x + b * r_unit.y) + r_unit.y * (b * r_unit.x + d * r_unit.y);
+        let min_possible = (dist - 2.0 * var_radial.sqrt()).max(0.0);
+
+        // Radar priority: higher when firing priority is high AND uncertainty could bring
+        // the target close. The +1 avoids division by zero.
+        self.radar_priority = self.firing_priority / (min_possible + 1.0);
     }
 }
 
 /// Intercept a target moving with constant acceleration, using
 /// a constant speed bullet in 2d. Position and velocity are
 /// relative to the shooter.
-// 
+//
 /// r, v, a: initial position, velocity, acceleration of target
 /// u: bullet velocity, |u| = bullet_speed
 /// t: time to intercept
 ///
 /// Governing equation:
 ///    r + v t + 0.5 a t^2 = u t
-fn firing_solution_const_accel(r_rel: Vec2, v_rel: Vec2, a_rel: Vec2, bullet_speed: f64, t_guess: f64, tol: f64) -> f64 {
+fn firing_solution_const_accel(
+    r_rel: Vec2,
+    v_rel: Vec2,
+    a_rel: Vec2,
+    bullet_speed: f64,
+    t_guess: f64,
+    tol: f64,
+) -> f64 {
     let p4 = 0.5 * a_rel.dot(a_rel);
     let p3 = v_rel.dot(a_rel);
     let p2 = v_rel.dot(v_rel) + r_rel.dot(a_rel) - bullet_speed * bullet_speed;
