@@ -1,0 +1,7 @@
+For Oort:
+- Documentation for the oort_api is available at: https://docs.rs/oort_api/latest/oort_api/
+    - Reference this anytime you are asked to write Oort-specific code.
+- Find Oort learning resources at: https://github.com/rlane/oort3/wiki/Learning-Resources
+    - https://github.com/rlane/oort3/wiki/The-Physics-of-Oort
+    - https://github.com/rlane/oort3/wiki/CPU-and-Memory-Limits
+    - https://github.com/rlane/oort3/wiki/Vector-Math
