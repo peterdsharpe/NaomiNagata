@@ -49,11 +49,10 @@ pub struct Ship {
 impl Ship {
     pub fn new() -> Ship {
         // PID gains tuned empirically for stable heading control.
-        let pid = Pid::new(10.0, 0.0, 5.0);
+        let pid = Pid::new(8.0, 0.0, 5.0);
         Ship { pid }
     }
 
-    // Uncomment me, then press Ctrl-Enter (Cmd-Enter on Mac) to upload the code.
     pub fn tick(&mut self) {
         let r_rel = target() - position();
         let v_rel = target_velocity() - velocity();
@@ -65,6 +64,7 @@ impl Ship {
             Some(sol) => sol,
             None => return,
         };
+        let shot_distance = BULLET_SPEED * t;
 
         debug!("t: {}", t);
         draw_diamond(aim_point, 10.0, 0x00ff00);
@@ -76,14 +76,14 @@ impl Ship {
 
         let aim_angle = aim_point.angle();
 
-        let bearing = angle_diff(heading(), aim_angle);
+        let bearing_error = angle_diff(heading(), aim_angle);
 
         // --- PID heading control ---
-        let control = self.pid.update(bearing, TICK_LENGTH);
+        let control = self.pid.update(bearing_error, TICK_LENGTH);
         torque(control);
 
         // Fire
-        if bearing.abs() < 0.01 {
+        if bearing_error.abs() * shot_distance < 20.0 {
             fire(0);
         }
     }
