@@ -73,7 +73,11 @@ impl Pid {
         let p = self.kp * error;
 
         // Integral term.
-        self.integral += error * dt;
+        let integral_increment = match self.prev_error {
+            Some(prev) => 0.5 * (error + prev) * dt, // Trapezoidal integration
+            None => error * dt, // First step: rectangular integration
+        };
+        self.integral += integral_increment;
         let i = self.ki * self.integral;
 
         // Derivative term.
