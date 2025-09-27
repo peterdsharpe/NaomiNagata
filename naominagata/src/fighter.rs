@@ -29,7 +29,8 @@ fn firing_solution(r_rel: Vec2, v_rel: Vec2, bullet_speed: f64) -> Option<(f64, 
     }
 
     let sqrt_disc = disc.sqrt();
-    let (t1, t2) = ((-b - sqrt_disc) / (2.0 * a), (-b + sqrt_disc) / (2.0 * a));
+    let t1 = (-b + sqrt_disc) / (2.0 * a);
+    let t2 = (-b - sqrt_disc) / (2.0 * a);
 
     // Earliest positive interception time.
     let t = match (t1 > 0.0, t2 > 0.0) {
