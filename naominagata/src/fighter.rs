@@ -60,30 +60,30 @@ impl Ship {
         draw_diamond(target(), 50.0, 0xff0000);
 
         // Compute firing solution in the ship-centred frame.
-        let (t, aim_point) = match firing_solution(r_rel, v_rel, BULLET_SPEED) {
+        let (t, aim_point_rel) = match firing_solution(r_rel, v_rel, BULLET_SPEED) {
             Some(sol) => sol,
             None => return,
         };
         let shot_distance = BULLET_SPEED * t;
 
         debug!("t: {}", t);
-        draw_diamond(position() + aim_point, 10.0, 0x00ff00);
+        draw_diamond(position() + aim_point_rel, 10.0, 0x00ff00);
         draw_line(
             position(),
             position() + vec2(heading().cos(), heading().sin()) * BULLET_SPEED * t,
             0x00ff00,
         );
 
-        let aim_angle = aim_point.angle();
+        let aim_angle = aim_point_rel.angle();
 
-        let bearing_error = angle_diff(heading(), aim_angle);
+        let heading_rel_error = angle_diff(heading(), aim_angle);
 
         // --- PID heading control ---
-        let control = self.pid.update(bearing_error, TICK_LENGTH);
+        let control = self.pid.update(heading_rel_error, TICK_LENGTH);
         torque(control);
 
         // Fire
-        if bearing_error.abs() * shot_distance < 10.0 {
+        if heading_rel_error.abs() * shot_distance < 10.0 {
             fire(0);
         }
 
