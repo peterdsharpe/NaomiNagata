@@ -1,15 +1,16 @@
 use crate::BULLET_SPEED;
+use crate::mat2::Mat2;
 use oort_api::prelude::*;
 
 const MAX_ITER: usize = 100;
 
 pub struct TrackedTarget {
     pub r: Vec2,
-    pub r_cov: [[f64; 2]; 2],
+    pub r_cov: Mat2,
     pub v: Vec2,
-    pub v_cov: [[f64; 2]; 2],
+    pub v_cov: Mat2,
     pub a: Vec2,
-    pub a_cov: [[f64; 2]; 2],
+    pub a_cov: Mat2,
     pub time_to_intercept: Option<f64>,
     pub intercept_point: Option<Vec2>,
     /// Priority for engaging this target with weapons (computed each tick).
@@ -19,14 +20,14 @@ pub struct TrackedTarget {
 }
 
 impl TrackedTarget {
-    pub fn new(r: Vec2, v: Vec2, a: Vec2) -> Self {
+    pub fn new(r: Vec2, v: Vec2, a: Vec2, r_cov: Mat2, v_cov: Mat2, a_cov: Mat2) -> Self {
         Self {
             r,
             v,
             a,
-            r_cov: [[0.0; 2]; 2],
-            v_cov: [[0.0; 2]; 2],
-            a_cov: [[0.0; 2]; 2],
+            r_cov,
+            v_cov,
+            a_cov,
             time_to_intercept: None,
             intercept_point: None,
             firing_priority: 0.0,
@@ -35,14 +36,21 @@ impl TrackedTarget {
     }
 
     pub fn tick(&mut self) {
+        // State estimate updates
         self.r += self.v * TICK_LENGTH;
         self.v += self.a * TICK_LENGTH;
-        for i in 0..2 {
-            for j in 0..2 {
-                self.r_cov[i][j] += self.v_cov[i][j] * TICK_LENGTH;
-                self.v_cov[i][j] += self.a_cov[i][j] * TICK_LENGTH;
-            }
-        }
+        self.r_cov = self.r_cov + self.v_cov * TICK_LENGTH;
+        self.v_cov = self.v_cov + self.a_cov * TICK_LENGTH;
+
+        draw_diamond(self.r, 10.0, 0x4f78ff);
+        draw_line(self.r - vec2(self.r_cov.xx))
+
+
+        // Firing solution update
+
+        // Priority updates
+
+        // Debugging
     }
 
 
@@ -95,9 +103,9 @@ impl TrackedTarget {
         let r_rel = self.r - shooter_pos;
         let dist = r_rel.length();
         // Extract covariance entries.
-        let a = self.r_cov[0][0];
-        let b = self.r_cov[0][1];
-        let d = self.r_cov[1][1];
+        let a = self.r_cov.xx;
+        let b = self.r_cov.xy;
+        let d = self.r_cov.yy;
         // Unit vector in relative direction.
         let r_unit = if dist > 0.0 {
             r_rel / dist
