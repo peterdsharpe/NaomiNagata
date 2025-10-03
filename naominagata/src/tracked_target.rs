@@ -43,7 +43,6 @@ impl TrackedTarget {
         self.v_cov = self.v_cov + self.a_cov * TICK_LENGTH;
 
         draw_diamond(self.r, 10.0, 0x4f78ff);
-        draw_line(self.r - vec2(self.r_cov.xx))
 
 
         // Firing solution update
