@@ -18,6 +18,7 @@ checksum = "294eeb9091a188eb266fcb3dcb2d3adccf4499fdf05b5d9c42b91866b5384a82"
 name = "naominagata"
 version = "0.1.0"
 dependencies = [
+ "maths-rs",
  "oort_api",
 ]
 

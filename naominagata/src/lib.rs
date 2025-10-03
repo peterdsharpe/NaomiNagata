@@ -4,3 +4,4 @@ pub mod fighter;
 pub mod pid;
 pub mod tracked_target;
 pub mod mat2;
+pub mod kalman;
