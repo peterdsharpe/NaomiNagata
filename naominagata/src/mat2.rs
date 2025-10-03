@@ -14,8 +14,8 @@ pub struct Mat2 {
 }
 
 impl Mat2 {
-    pub fn new(a: f64, b: f64, c: f64, d: f64) -> Self {
-        Self { xx: a, xy: b, yx: c, yy: d }
+    pub fn new(xx: f64, xy: f64, yx: f64, yy: f64) -> Self {
+        Self { xx, xy, yx, yy }
     }
 
     pub fn identity() -> Mat2 {
