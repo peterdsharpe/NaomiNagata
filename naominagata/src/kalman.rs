@@ -66,7 +66,16 @@ impl KalmanPosVel2d {
         Self { x, p, f, q, h, r }
     }
 
-    pub fn update(&mut self, position_meas: &Vec2, velocity_meas: &Vec2) {
+    /// Predict the next state (without measurement update).
+    /// Call this on ticks when we do not get a radar measurement of the target.
+    pub fn predict(&mut self) {
+        self.x = self.f * self.x;
+        self.p = mat4_add(&(self.f * self.p * self.f.transpose()), &self.q);
+    }
+
+    /// Perform a full predict and update step with the given position and velocity measurements.
+    /// Call this on ticks when we get a radar measurement of the target.
+    pub fn predict_and_update(&mut self, position_meas: &Vec2, velocity_meas: &Vec2) {
         let z = Vec4::new(
             position_meas.x,
             position_meas.y,
@@ -75,15 +84,14 @@ impl KalmanPosVel2d {
         ); // Measurement vector
 
         // Prediction step
-        self.x = self.f * self.x;
-        self.p = mat4_add(&(self.f * self.p * self.f.transpose()), &self.q);
+        self.predict();
 
         // Measurement update step
         let y = z - self.h * self.x; // Measurement residual
         let s = mat4_add(&(self.h * self.p * self.h.transpose()), &self.r); // Residual covariance
         let k = self.p * self.h.transpose() * s.inverse(); // Kalman gain
 
-        self.x = self.x + k * y;
+        self.x += k * y;
         let i = Mat4::<f64>::identity();
         let i_minus_kh = mat4_sub(&i, &(k * self.h));
         self.p = mat4_add(
@@ -173,7 +181,7 @@ mod tests {
         let y_true = 3.0;
 
         for _ in 0..10 {
-            kf.update(&vec2(x_true, y_true), &vec2(0.0, 0.0));
+            kf.predict_and_update(&vec2(x_true, y_true), &vec2(0.0, 0.0));
         }
 
         println!(
@@ -204,7 +212,7 @@ mod tests {
         for _ in 0..10 {
             x_true += vx_true * TICK_LENGTH;
             y_true += vy_true * TICK_LENGTH;
-            kf.update(&vec2(x_true, y_true), &vec2(vx_true, vy_true));
+            kf.predict_and_update(&vec2(x_true, y_true), &vec2(vx_true, vy_true));
         }
 
         println!(
