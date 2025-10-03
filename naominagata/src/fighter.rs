@@ -24,16 +24,16 @@ impl Ship {
     pub fn tick(&mut self) {
         // --- Update targets ---
         for tgt in &mut self.targets {
-            // In this simple example we use the global target() measurement for all.
-            // A real implementation would match radar detections to tracks.
             tgt.tick();
         }
 
         // --- Radar scheduling (stub) ---
         if self.targets.is_empty() || current_tick() % 15 == 0 {
             debug!("Broad radar scan (90° arc)");
-            set_radar_heading(rand(0.0, 2.0 * PI));
-            set_radar_width(PI / 2.0);
+            // set_radar_heading(rand(0.0, 2.0 * PI));
+            set_radar_heading((current_tick() as f64) / 10.0);
+            set_radar_width(PI / 8.0);
+            scan();
         } else if let Some(best_radar) = self
             .targets
             .iter()

@@ -1,5 +1,6 @@
 use crate::BULLET_SPEED;
 use crate::mat2::Mat2;
+use crate::fighter::Ship;
 use oort_api::prelude::*;
 
 const MAX_ITER: usize = 100;
@@ -44,14 +45,9 @@ impl TrackedTarget {
 
         draw_diamond(self.r, 10.0, 0x4f78ff);
 
-
-        // Firing solution update
-
-        // Priority updates
-
-        // Debugging
+        self.update_firing_solution();
+        self.update_priorities();
     }
-
 
     pub fn update_firing_solution(&mut self) {
         let r_rel = self.r - position();
@@ -91,7 +87,7 @@ impl TrackedTarget {
             Some(self.r + self.v * t + 0.5 * self.a * t * t);
     }
 
-    pub fn update_priorities(&mut self, shooter_pos: Vec2) {
+    pub fn update_priorities(&mut self) {
         // Firing priority: inverse of time‐to‐intercept if a solution exists.
         self.firing_priority = self
             .time_to_intercept
@@ -99,7 +95,7 @@ impl TrackedTarget {
             .unwrap_or(0.0);
 
         // Mahalanobis-based closest possible approach within 2σ uncertainty.
-        let r_rel = self.r - shooter_pos;
+        let r_rel = self.r - position();
         let dist = r_rel.length();
         // Extract covariance entries.
         let a = self.r_cov.xx;
